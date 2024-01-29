@@ -1,23 +1,32 @@
 #!/bin/bash
 
-./trips_program > output.txt
+# Verify if Gnuplot Is installed
+if ! command -v gnuplot &> /dev/null; then
+    echo "Gnuplot is not installed, please install it and retry"
+    exit 1
+fi
 
-# Générer le fichier de données pour le graphique
-awk '{print $1, $3, $5}' output.txt > data.txt
+# Compile and execute the c program to sort the data
+gcc -o t t.c && ./t
 
-# Générer le script gnuplot
-echo 'set terminal png' > script.gp
-echo 'set output "trips_histogram.png"' >> script.gp
-echo 'set boxwidth 0.5' >> script.gp
-echo 'set style fill solid' >> script.gp
-echo 'set ytics 1' >> script.gp
-echo 'set xlabel "Towns"' >> script.gp
-echo 'set ylabel "Number of Trips"' >> script.gp
-echo 'set title "Top 10 Towns with the Most Trips"' >> script.gp
-echo 'plot "data.txt" using 2:xtic(1) title "Total Trips" with boxes, "" using 3 title "Depart Trips" with boxes' >> script.gp
+# Name of the CSV file
+csv_file="temp/tempT.csv"
 
-# Exécuter le script gnuplot
-gnuplot script.gp
+# Name of the output file 
+output_file="histogramme_regroupe.png"
 
-# Nettoyer les fichiers temporaires
-rm output.txt data.txt script.gp
+# Command Gnuplot to creat the graph
+gnuplot <<EOF
+set terminal pngcairo enhanced font 'arial,10' size 800,600
+set output "$output_file"
+set style data histograms
+set style histogram cluster gap 1
+set style fill solid border -1
+set xlabel "Villes"
+set ylabel "Nombre de Trajets"
+set xtics rotate by -45
+set key autotitle columnhead
+plot '$csv_file' using 2:xtic(1) title "Nombre de Trajets Total", '' using 3 title "Nombre de Départs"
+EOF
+
+echo "Graphique généré : $output_file"
