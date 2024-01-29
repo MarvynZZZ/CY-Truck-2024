@@ -2,160 +2,243 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct AVLNode {
+/*-----------------------------------------------*/
+// STRUCTURES USED IN THE PROGRAM
+// Structure representing a step in a route
+typedef struct Step {
     char town[50];
-    int totalTrips;
-    int departTrips;
-    struct AVLNode *left;
-    struct AVLNode *right;
+    int isDeparture;
+} Step;
+
+// Structure representing a route 
+typedef struct Route {
+    Step* step;
+    int stepNumber;
+} Route;
+
+// Structure representing a town with the total of number route and departures
+typedef struct Town {
+    char name[50];
+    int totalRoute;
+    int departures;
+} Town;
+
+// Structure representing an AVL node
+typedef struct Node {
+    Town town;
+    struct Node* left;
+    struct Node* right;
     int height;
-} AVLNode;
+} Node;
 
-int max(int a, int b) {
-    return (a > b) ? a : b;
-}
 
-int height(AVLNode *node) {
-    if (node == NULL)
-        return 0;
-    return node->height;
-}
-
-int getBalance(AVLNode *node) {
-    if (node == NULL)
-        return 0;
-    return height(node->left) - height(node->right);
-}
-
-AVLNode *newNode(char *town) {
-    AVLNode *node = (AVLNode *)malloc(sizeof(AVLNode));
-    strcpy(node->town, town);
-    node->totalTrips = 0;
-    node->departTrips = 0;
+/*-----------------------------------------------*/
+// MAIN FUNCTIONS FOR THE PROGRAM
+// Utility function to create a new AVL tree node
+Node* newNode(char* name, int totalRoute, int departures){
+    Node* node = (Node*)malloc(sizeof(Node));
+    strcpy(node->town.name, name);
+  
+    node->town.totalRoute = totalRoute;
+    node->town.departures = departures;
     node->left = NULL;
     node->right = NULL;
     node->height = 1;
+  
     return node;
 }
 
-AVLNode *rightRotate(AVLNode *y) {
-    AVLNode *x = y->left;
-    AVLNode *T2 = x->right;
 
-    x->right = y;
-    y->left = T2;
+// Utility function to get the height of a node
+int height(Node* node){
+    if(node != NULL){
+      return node->height;
+    }
+    else {
+      return 0;
+    }
+}
 
+
+// Utility function to get the maximum of two integers
+int max(int a, int b){
+   if(a > b){
+     return a;
+   }
+   else {
+     return b;
+   } 
+}
+
+
+// Rotation functions to move nodes in the AVL :
+// Utility function to do a simple left rotation
+Node* rotateLeft(Node* y) {
+    Node* x = y->right;
+    Node* T2 = x->left;
+
+    // Do the rotations :
+    x->left = y;
+    y->right = T2;
+
+    // Updating the heights : 
     y->height = max(height(y->left), height(y->right)) + 1;
     x->height = max(height(x->left), height(x->right)) + 1;
 
     return x;
 }
 
-AVLNode *leftRotate(AVLNode *x) {
-    AVLNode *y = x->right;
-    AVLNode *T2 = y->left;
 
-    y->left = x;
-    x->right = T2;
+// Utility function to do a simple right rotation
+Node* rotateRight(Node* x) {
+    Node* y = x->left;
+    Node* T2 = y->right;
 
+    // Do the rotation : 
+    y->right = x;
+    x->left = T2;
+
+    // Updating the heights : 
     x->height = max(height(x->left), height(x->right)) + 1;
     y->height = max(height(y->left), height(y->right)) + 1;
 
     return y;
 }
 
-int getTrips(AVLNode *root, char *town, int isDepart) {
-    if (root == NULL)
-        return 0;
 
-    int compare = strcmp(town, root->town);
-
-    if (compare < 0)
-        return getTrips(root->left, town, isDepart);
-    else if (compare > 0)
-        return getTrips(root->right, town, isDepart);
-    else
-        return isDepart ? root->departTrips : root->totalTrips;
-}
-
-AVLNode *insertNode(AVLNode *node, char *town, int isDepart) {
-    if (node == NULL)
-        return newNode(town);
-
-    int compare = strcmp(town, node->town);
-
-    if (compare < 0)
-        node->left = insertNode(node->left, town, isDepart);
-    else if (compare > 0)
-        node->right = insertNode(node->right, town, isDepart);
+// Utility function to get the balance of a node 
+int getBalance(Node* node) {
+    if(node != NULL){
+      return height(node->left) - height(node->right);
+    }
     else {
-        if (isDepart)
-            node->departTrips++;
-        node->totalTrips++;
-        return node;
-    }
-
-    node->height = 1 + max(height(node->left), height(node->right));
-
-    int balance = getBalance(node);
-
-    if (balance > 1) {
-        if (strcmp(town, node->left->town) < 0)
-            return rightRotate(node);
-        else {
-            node->left = leftRotate(node->left);
-            return rightRotate(node);
-        }
-    }
-
-    if (balance < -1) {
-        if (strcmp(town, node->right->town) > 0)
-            return leftRotate(node);
-        else {
-            node->right = rightRotate(node->right);
-            return leftRotate(node);
-        }
-    }
-
-    return node;
-}
-
-void printTop10Trips(AVLNode *root) {
-    if (root != NULL) {
-        printTop10Trips(root->right);
-        printf("%s: Total Trips - %d, Depart Trips - %d\n", root->town, root->totalTrips, root->departTrips);
-        printTop10Trips(root->left);
+      return 0;
     }
 }
 
-int main() {
-    FILE *file = fopen("trajets.csv", "r");
-    if (file == NULL) {
-        fprintf(stderr, "Error opening file.\n");
+
+// Function to insert a node in the AVL 
+Node* insert(Node* root, char* name, int totalRoute, int departures){
+  
+    // Normal insertion for an ABR :
+    if(root == NULL){
+        return newNode(name, totalRoute, departures);
+    }
+    int compareResult = strcmp(name, root->town.name);
+
+    if(compareResult < 0){
+        root->left = insert(root->left, name, totalRoute, departures);
+    }
+    else if (compareResult > 0){
+        root->right = insert(root->right, name, totalRoute, departures);
+    }
+  
+    // Updating the node's heights :
+    root->height = 1 + max(height(root->left), height(root->right));
+
+    // Get the balance factor of this node to check balance :
+    int balance = getBalance(root);
+
+    // Case of imbalance on the left :
+    if(balance > 1){
+        if(compareResult < 0){
+            return rotateRight(root);
+        }
+        else {
+            root->left = rotateLeft(root->left);
+            return rotateRight(root);
+        }
+    }
+
+
+    // Case of imbalance on the right :
+    if(balance < -1){
+        if(compareResult > 0){
+            return rotateLeft(root);
+        }
+        else {
+            root->right = rotateRight(root->right);
+            return rotateLeft(root);
+        }
+    }
+
+    // The AVL Tree is balanced
+    return root;
+}
+
+
+// Utility function to free the AVL's memory 
+void freeTree(Node* root){
+    if(root != NULL){
+        freeTree(root->left);
+        freeTree(root->right);
+        free(root);
+    }
+}
+
+void getTopCities(Node* root, Town topCities[], int* count) {
+    if (root != NULL){
+        // Call recursively for left and right subtrees
+        getTopCities(root->left, topCities, count);
+        getTopCities(root->right, topCities, count);
+
+        // Add the current city to the data if it has more trips than some of the current cities
+        if(root->town.totalRoute > topCities[9].totalRoute){
+            // Add departure cities
+            if(root->town.departures > 0){
+                for(int i = 0; i < 10; ++i){
+                    if(root->town.totalRoute > topCities[i].totalRoute){
+                        for(int j = 9; j > i; --j){
+                            topCities[j] = topCities[j - 1];
+                        }
+                        strcpy(topCities[i].name, root->town.name);
+                        topCities[i].totalRoute = root->town.totalRoute;
+                        topCities[i].departures = root->town.departures;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// MAIN PROGRAM, EXECUTE THE SORT AND HOLD THE DATA
+int main(){
+
+    
+    // Tab to stock the top 10 Cities for the datas
+    Town topCities[10];
+    for(int i = 0; i < 10; ++i){
+        topCities[i].totalRoute = 0;
+        topCities[i].departures = 0;
+    }
+
+    // Call the function to get the top 10 cities
+    int count = 0;
+    getTopCities(root, topCities, &count);
+
+    // Display results
+    // Open a CSV file to write the datas
+    FILE *csvFile = fopen("temp/tempT.csv", "w");
+    if(csvFile == NULL){
+        fprintf(stderr, "Opening of CSV file failed ! \n");
         return 1;
     }
 
-    char line[256];
-    AVLNode *root = NULL;
+    // Write header to CSV file
+    fprintf(csvFile, "Town;number of trajets;number of departures\n");
 
-    while (fgets(line, sizeof(line), file)) {
-        char *routeID, *stepID, *townA, *townB, *distance, *driverName;
-        routeID = strtok(line, ";");
-        stepID = strtok(NULL, ";");
-        townA = strtok(NULL, ";");
-        townB = strtok(NULL, ";");
-        distance = strtok(NULL, ";");
-        driverName = strtok(NULL, ";");
-
-        // Insert townA as the departure town
-        root = insertNode(root, townA, 1);
-        // Insert townB as part of the route
-        root = insertNode(root, townB, 0);
+    // Write results to CSV file
+    for(int i = 0; i < 10; ++i){
+        fprintf(csvFile, "%s;%d;%d\n", topCities[i].name, topCities[i].totalRoute, topCities[i].departures);
     }
 
-    fclose(file);
+    // Close the CSV file
+    fclose(csvFile);
 
-    printTop10Trips(root);
+    // Free the memory of the AVL
+    freeTree(root);
 
     return 0;
 }
